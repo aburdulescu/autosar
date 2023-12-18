@@ -7,17 +7,14 @@ import (
 
 func TestEncode(t *testing.T) {
 	in := Input{
-		UID:       "00",
-		AuthKeyID: 1,
-		AuthKey:   "00",
-		ID:        4,
-		NewKey:    "00",
-		Counter:   1,
+		UID:     "000000000000000000000000000001",
+		AuthID:  MASTER_ECU_KEY,
+		ID:      KEY_1,
+		AuthKey: "000102030405060708090a0b0c0d0e0f",
+		NewKey:  "0f0e0d0c0b0a09080706050403020100",
+		Counter: 1,
 		Flags: ProtectionFlags{
-			Write:    true,
-			Boot:     true,
-			Debugger: true,
-			Wildcard: true,
+			KeyUsage: false,
 		},
 	}
 
