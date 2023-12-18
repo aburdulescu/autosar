@@ -1,0 +1,46 @@
+linters:
+  enable:
+    - errorlint
+    - unconvert
+    - unparam
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - exhaustive
+    - exportloopref
+    - forcetypeassert
+    - goconst
+    - gocritic
+    - gofmt
+    - gosec
+    - nilerr
+    - usestdlibvars
+    - decorder
+    - dupl
+    - dupword
+    - durationcheck
+    - errname
+    - gocheckcompilerdirectives
+    - gochecknoinits
+    - mirror
+    - misspell
+    - musttag
+    - predeclared
+    - reassign
+    - thelper
+    - wastedassign
+    - godox
+    - lll
+    - errchkjson
+    - funlen
+    - nestif
+    - prealloc
+    # - stylecheck
+
+linters-settings:
+  funlen:
+    lines: -1 # don't count lines, only statements
+    ignore-comments: true
+  nestif:
+    min-complexity: 4

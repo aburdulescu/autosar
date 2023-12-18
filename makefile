@@ -1,5 +1,5 @@
 .PHONY: all
-all: vet test
+all: vet lint test
 
 .PHONY: vet
 vet:
@@ -12,3 +12,7 @@ test:
 .PHONY: generate
 generate:
 	go generate ./...
+
+lint:
+	which golangci-lint || go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	golangci-lint run

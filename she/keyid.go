@@ -79,8 +79,11 @@ func (id KeyID) IsCompatible(other KeyID) error {
 			return fmt.Errorf("%s can be updated only with %s or one of KEY_n", id, SECRET_KEY)
 		}
 
+	case SECRET_KEY:
+		return fmt.Errorf("%s cannot be used", id)
+
 	default:
-		return fmt.Errorf("%s is not valid or cannot be used", id)
+		return fmt.Errorf("%s is not valid", id)
 
 	}
 
