@@ -5,13 +5,13 @@ import (
 	"errors"
 )
 
-const BLOCK_SIZE = 16
+const blockSize = 16
 
 func Compress(srcKey, constant []byte) ([]byte, error) {
-	if len(srcKey)%BLOCK_SIZE != 0 {
+	if len(srcKey)%blockSize != 0 {
 		return nil, errors.New("srckey not aligned to AES block")
 	}
-	if len(constant)%BLOCK_SIZE != 0 {
+	if len(constant)%blockSize != 0 {
 		return nil, errors.New("constant not aligned to AES block")
 	}
 	paddedConstant := constant
@@ -42,7 +42,10 @@ func encrypt(key, in []byte) []byte {
 }
 
 func xor3(b0, b1, b2 []byte) []byte {
-	if len(b0) != len(b1) || len(b0) != len(b2) || len(b1) != len(b2) {
+	if len(b0) != len(b1) {
+		panic("inputs with different lengths")
+	}
+	if len(b0) != len(b2) {
 		panic("inputs with different lengths")
 	}
 	res := make([]byte, len(b0))
