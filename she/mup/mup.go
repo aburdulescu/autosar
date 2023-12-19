@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"log"
 
 	"github.com/aburdulescu/autosar/internal/aesmp"
 	"github.com/aburdulescu/autosar/she"
@@ -43,6 +44,12 @@ type EncodeResult struct {
 	M3 [16]byte
 }
 
+var withLogs = false
+
+func WithLogs() {
+	withLogs = true
+}
+
 // Encode the memory update protocol input
 func (in Input) Encode() (*EncodeResult, error) {
 	if err := in.ID.IsCompatible(in.AuthID); err != nil {
@@ -60,10 +67,10 @@ func (in Input) Encode() (*EncodeResult, error) {
 	encConst := sheKeyUpdateEncConstBase.Encode()
 	macConst := sheKeyUpdateMacConstBase.Encode()
 
-	// if withLogs {
-	// 	log.Println("ENC_C:", hex.EncodeToString(encConst))
-	// 	log.Println("MAC_C:", hex.EncodeToString(macConst))
-	// }
+	if withLogs {
+		log.Println("ENC_C:", hex.EncodeToString(encConst))
+		log.Println("MAC_C:", hex.EncodeToString(macConst))
+	}
 
 	authkey, err := hex.DecodeString(in.AuthKey)
 	if err != nil {
@@ -80,10 +87,10 @@ func (in Input) Encode() (*EncodeResult, error) {
 		return nil, err
 	}
 
-	// if withLogs {
-	// 	log.Println("K1:", hex.EncodeToString(k1))
-	// 	log.Println("K2:", hex.EncodeToString(k2))
-	// }
+	if withLogs {
+		log.Println("K1:", hex.EncodeToString(k1))
+		log.Println("K2:", hex.EncodeToString(k2))
+	}
 
 	m1, err := in.encodeM1()
 	if err != nil {
@@ -118,10 +125,10 @@ func (in Input) encodeM1() ([]byte, error) {
 		return nil, fmt.Errorf("UID expected length is 15 bytes, have %d bytes", len(uid))
 	}
 
-	// if withLogs {
-	// 	log.Println("KID:", in.KeyId)
-	// 	log.Println("AuthID:", in.AuthKeyId)
-	// }
+	if withLogs {
+		log.Println("KID:", in.ID)
+		log.Println("AuthID:", in.AuthID)
+	}
 
 	var r []byte
 	r = append(r, uid...)
@@ -141,11 +148,12 @@ func (in Input) encodeM2(k1 []byte) ([]byte, error) {
 
 	flags := in.Flags.encode()
 	counterAndFlags := encodeCounterAndFlags(in.Counter, flags)
-	// if withLogs {
-	// 	log.Printf("Cid: %032b %v\n", in.Counter, in.Counter)
-	// 	log.Printf("Fid: %08b %v\n", flags, in.Flags)
-	// 	log.Printf("Cid|Fid: %064b\n", counterAndFlags)
-	// }
+
+	if withLogs {
+		log.Printf("Cid: %032b %v\n", in.Counter, in.Counter)
+		log.Printf("Fid: %08b %v\n", flags, in.Flags)
+		log.Printf("Cid|Fid: %064b\n", counterAndFlags)
+	}
 
 	data := make([]byte, 32)
 
