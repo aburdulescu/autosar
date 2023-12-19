@@ -82,9 +82,6 @@ func (id KeyID) IsCompatible(other KeyID) error {
 	case SECRET_KEY:
 		return fmt.Errorf("%s cannot be used", id)
 
-	default:
-		return fmt.Errorf("%s is not valid", id)
-
 	}
 
 	return nil
