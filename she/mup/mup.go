@@ -57,7 +57,8 @@ func (in Input) Encode() (*EncodeResult, error) {
 		return nil, fmt.Errorf("AuthKey expected length is 16 bytes, have %d bytes", len(authKey))
 	}
 
-	encConst, macConst := sheKeyUpdateEncConstBase.Encode(), sheKeyUpdateMacConstBase.Encode()
+	encConst := sheKeyUpdateEncConstBase.Encode()
+	macConst := sheKeyUpdateMacConstBase.Encode()
 
 	// if withLogs {
 	// 	log.Println("ENC_C:", hex.EncodeToString(encConst))
@@ -68,14 +69,17 @@ func (in Input) Encode() (*EncodeResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("authkey: %w", err)
 	}
+
 	k1, err := aesmp.Compress(authkey, encConst)
 	if err != nil {
 		return nil, err
 	}
+
 	k2, err := aesmp.Compress(authkey, macConst)
 	if err != nil {
 		return nil, err
 	}
+
 	// if withLogs {
 	// 	log.Println("K1:", hex.EncodeToString(k1))
 	// 	log.Println("K2:", hex.EncodeToString(k2))
