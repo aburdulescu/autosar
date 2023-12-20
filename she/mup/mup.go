@@ -39,6 +39,7 @@ type Input struct {
 
 var withLogs = false
 
+// WithLogs will enable verbose logs for this package(useful for debugging)
 func WithLogs() {
 	withLogs = true
 }
@@ -57,7 +58,7 @@ func Decode(m1m2m3, authKey []byte) (*Input, error) {
 		return nil, err
 	}
 
-	if err := in.decodeM1(m1m2m3[:16]); err != nil {
+	if err := in.decodeM3(m1m2m3[:48], m1m2m3[48:], k2); err != nil {
 		return nil, err
 	}
 
@@ -65,7 +66,7 @@ func Decode(m1m2m3, authKey []byte) (*Input, error) {
 		return nil, err
 	}
 
-	if err := in.decodeM3(m1m2m3[48:], k2); err != nil {
+	if err := in.decodeM1(m1m2m3[:16]); err != nil {
 		return nil, err
 	}
 
@@ -218,15 +219,30 @@ func (in Input) encodeM2(k1 []byte) ([]byte, error) {
 
 	copy(data[16:], newKey)
 
-	iv := make([]byte, 16) // all zeros
-
-	return cbcEncrypt(k1, iv, data)
+	return cbcEncrypt(k1, m2IV[:], data)
 }
+
+var m2IV [16]byte // all zeros
 
 func (in *Input) decodeM2(m2, k1 []byte) error {
 	if len(m2) != 32 {
-		return fmt.Errorf("invalid input length: %d", len(m2))
+		return fmt.Errorf("invalid length for m2: %d", len(m2))
 	}
+
+	data, err := cbcDecrypt(k1, m2IV[:], m2)
+	if err != nil {
+		return err
+	}
+
+	counterAndFlags := binary.BigEndian.Uint64(data[0:8])
+
+	counter, flags := decodeCounterAndFlags(counterAndFlags)
+
+	in.Flags.decode(flags)
+
+	in.Counter = counter
+	in.NewKey = hex.EncodeToString(data[16:])
+
 	return nil
 }
 
@@ -237,9 +253,15 @@ func (in Input) encodeM3(k2, m1, m2 []byte) ([]byte, error) {
 	return cmacGenerate(k2, m1m2)
 }
 
-func (in *Input) decodeM3(m3, k2 []byte) error {
+func (in *Input) decodeM3(m1m2, m3, k2 []byte) error {
+	if len(m1m2) != 48 {
+		return fmt.Errorf("invalid length for m1m2: %d", len(m1m2))
+	}
 	if len(m3) != 16 {
-		return fmt.Errorf("invalid input length: %d", len(m3))
+		return fmt.Errorf("invalid length for m3: %d", len(m3))
+	}
+	if err := cmacVerify(k2, m1m2, m3); err != nil {
+		return fmt.Errorf("verification of M3 failed: %w", err)
 	}
 	return nil
 }
@@ -299,6 +321,17 @@ func cmacGenerate(key, msg []byte) ([]byte, error) {
 	return result, nil
 }
 
+func cmacVerify(key, msg, mac []byte) error {
+	c, err := aes.NewCipher(key)
+	if err != nil {
+		return err
+	}
+	if !cmac.Verify(mac, msg, c, c.BlockSize()) {
+		return fmt.Errorf("cmac: verify failed")
+	}
+	return nil
+}
+
 func encodeCounterAndFlags(counter uint32, flags uint8) uint64 {
 	var v uint64
 
@@ -315,6 +348,10 @@ func encodeCounterAndFlags(counter uint32, flags uint8) uint64 {
 	v |= uint64(flags&0x01) << 31
 
 	return v
+}
+
+func decodeCounterAndFlags(v uint64) (counter uint32, flags uint8) {
+	return
 }
 
 type ProtectionFlags struct {
