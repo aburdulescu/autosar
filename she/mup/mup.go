@@ -51,40 +51,35 @@ func WithLogs() {
 }
 
 // Encode the memory update protocol input
-func (in Input) Encode() (*EncodeResult, error) {
+func (in Input) Encode() (m1m2m3 [64]byte, m4m5 [48]byte, err error) {
 	if err := in.ID.IsCompatible(in.AuthID); err != nil {
-		return nil, err
+		return m1m2m3, m4m5, err
 	}
 
 	authKey, err := hex.DecodeString(in.AuthKey)
 	if err != nil {
-		return nil, err
+		return m1m2m3, m4m5, err
 	}
 	if len(authKey) != 16 {
-		return nil, fmt.Errorf("AuthKey expected length is 16 bytes, have %d bytes", len(authKey))
+		return m1m2m3, m4m5, fmt.Errorf("AuthKey expected length is 16 bytes, have %d bytes", len(authKey))
 	}
 
-	encConst := sheKeyUpdateEncConstBase.Encode()
-	macConst := sheKeyUpdateMacConstBase.Encode()
+	encConst := sheKeyUpdateEncConstBase.encode()
+	macConst := sheKeyUpdateMacConstBase.encode()
 
 	if withLogs {
 		log.Println("ENC_C:", hex.EncodeToString(encConst))
 		log.Println("MAC_C:", hex.EncodeToString(macConst))
 	}
 
-	authkey, err := hex.DecodeString(in.AuthKey)
+	k1, err := aesmp.Compress(authKey, encConst)
 	if err != nil {
-		return nil, fmt.Errorf("authkey: %w", err)
+		return m1m2m3, m4m5, err
 	}
 
-	k1, err := aesmp.Compress(authkey, encConst)
+	k2, err := aesmp.Compress(authKey, macConst)
 	if err != nil {
-		return nil, err
-	}
-
-	k2, err := aesmp.Compress(authkey, macConst)
-	if err != nil {
-		return nil, err
+		return m1m2m3, m4m5, err
 	}
 
 	if withLogs {
@@ -94,25 +89,24 @@ func (in Input) Encode() (*EncodeResult, error) {
 
 	m1, err := in.encodeM1()
 	if err != nil {
-		return nil, err
+		return m1m2m3, m4m5, err
 	}
 
 	m2, err := in.encodeM2(k1)
 	if err != nil {
-		return nil, err
+		return m1m2m3, m4m5, err
 	}
 
 	m3, err := in.encodeM3(k2, m1, m2)
 	if err != nil {
-		return nil, err
+		return m1m2m3, m4m5, err
 	}
 
-	var result EncodeResult
-	copy(result.M1[:], m1)
-	copy(result.M2[:], m2)
-	copy(result.M3[:], m3)
+	copy(m1m2m3[:16], m1)
+	copy(m1m2m3[16:48], m2)
+	copy(m1m2m3[48:], m3)
 
-	return &result, nil
+	return m1m2m3, m4m5, nil
 }
 
 func (in Input) encodeM1() ([]byte, error) {
@@ -173,9 +167,9 @@ func (in Input) encodeM3(k2, m1, m2 []byte) ([]byte, error) {
 	return cmacGenerate(k2, m1m2)
 }
 
-type KeyUpdateConst [4]uint32
+type keyUpdateConst [4]uint32
 
-func (c KeyUpdateConst) Encode() []byte {
+func (c keyUpdateConst) encode() []byte {
 	r := make([]byte, 16)
 	binary.BigEndian.PutUint32(r[0:4], c[0])
 	binary.BigEndian.PutUint32(r[4:8], c[1])
@@ -185,8 +179,8 @@ func (c KeyUpdateConst) Encode() []byte {
 }
 
 var (
-	sheKeyUpdateEncConstBase = KeyUpdateConst{0x01015348, 0x45008000, 0x00000000, 0x000000b0}
-	sheKeyUpdateMacConstBase = KeyUpdateConst{0x01025348, 0x45008000, 0x00000000, 0x000000b0}
+	sheKeyUpdateEncConstBase = keyUpdateConst{0x01015348, 0x45008000, 0x00000000, 0x000000b0}
+	sheKeyUpdateMacConstBase = keyUpdateConst{0x01025348, 0x45008000, 0x00000000, 0x000000b0}
 )
 
 func cbcEncrypt(key, iv, plaintext []byte) ([]byte, error) {
