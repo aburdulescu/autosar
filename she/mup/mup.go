@@ -43,13 +43,29 @@ func WithLogs() {
 	withLogs = true
 }
 
-func Decode(m1m2m3 []byte) (*Input, error) {
+func Decode(m1m2m3, authKey []byte) (*Input, error) {
 	if len(m1m2m3) != 64 {
 		return nil, fmt.Errorf("invalid input length: %d", len(m1m2m3))
 	}
 
 	var in Input
+
+	in.AuthKey = hex.EncodeToString(authKey)
+
+	k1, k2, err := in.generateK1K2()
+	if err != nil {
+		return nil, err
+	}
+
 	if err := in.decodeM1(m1m2m3[:16]); err != nil {
+		return nil, err
+	}
+
+	if err := in.decodeM2(m1m2m3[16:48], k1); err != nil {
+		return nil, err
+	}
+
+	if err := in.decodeM3(m1m2m3[48:], k2); err != nil {
 		return nil, err
 	}
 
@@ -65,35 +81,9 @@ func (in Input) Encode() (m1m2m3 [64]byte, m4m5 [48]byte, err error) {
 		return m1m2m3, m4m5, err
 	}
 
-	authKey, err := hex.DecodeString(in.AuthKey)
+	k1, k2, err := in.generateK1K2()
 	if err != nil {
 		return m1m2m3, m4m5, err
-	}
-	if len(authKey) != 16 {
-		return m1m2m3, m4m5, fmt.Errorf("AuthKey expected length is 16 bytes, have %d bytes", len(authKey))
-	}
-
-	encConst := sheKeyUpdateEncConstBase.encode()
-	macConst := sheKeyUpdateMacConstBase.encode()
-
-	if withLogs {
-		log.Println("ENC_C:", hex.EncodeToString(encConst))
-		log.Println("MAC_C:", hex.EncodeToString(macConst))
-	}
-
-	k1, err := aesmp.Compress(authKey, encConst)
-	if err != nil {
-		return m1m2m3, m4m5, err
-	}
-
-	k2, err := aesmp.Compress(authKey, macConst)
-	if err != nil {
-		return m1m2m3, m4m5, err
-	}
-
-	if withLogs {
-		log.Println("K1:", hex.EncodeToString(k1))
-		log.Println("K2:", hex.EncodeToString(k2))
 	}
 
 	m1, err := in.encodeM1()
@@ -118,6 +108,41 @@ func (in Input) Encode() (m1m2m3 [64]byte, m4m5 [48]byte, err error) {
 	return m1m2m3, m4m5, nil
 }
 
+func (in Input) generateK1K2() ([]byte, []byte, error) {
+	authKey, err := hex.DecodeString(in.AuthKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(authKey) != 16 {
+		return nil, nil, fmt.Errorf("AuthKey expected length is 16 bytes, have %d bytes", len(authKey))
+	}
+
+	encConst := sheKeyUpdateEncConstBase.encode()
+	macConst := sheKeyUpdateMacConstBase.encode()
+
+	if withLogs {
+		log.Println("ENC_C:", hex.EncodeToString(encConst))
+		log.Println("MAC_C:", hex.EncodeToString(macConst))
+	}
+
+	k1, err := aesmp.Compress(authKey, encConst)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	k2, err := aesmp.Compress(authKey, macConst)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if withLogs {
+		log.Println("K1:", hex.EncodeToString(k1))
+		log.Println("K2:", hex.EncodeToString(k2))
+	}
+
+	return k1, k2, nil
+}
+
 func (in Input) encodeM1() ([]byte, error) {
 	uid, err := hex.DecodeString(in.UID)
 	if err != nil {
@@ -129,7 +154,8 @@ func (in Input) encodeM1() ([]byte, error) {
 	}
 
 	if withLogs {
-		log.Println("KID:", in.ID)
+		log.Println("UID:", in.UID)
+		log.Println("ID:", in.ID)
 		log.Println("AuthID:", in.AuthID)
 	}
 
@@ -161,8 +187,8 @@ func (in *Input) decodeM1(m1 []byte) error {
 
 	if withLogs {
 		log.Println("UID:", in.UID)
-		log.Println("AuthID:", in.AuthID)
 		log.Println("ID:", in.ID)
+		log.Println("AuthID:", in.AuthID)
 	}
 
 	return nil
@@ -181,9 +207,9 @@ func (in Input) encodeM2(k1 []byte) ([]byte, error) {
 	counterAndFlags := encodeCounterAndFlags(in.Counter, flags)
 
 	if withLogs {
-		log.Printf("Cid: %032b %v\n", in.Counter, in.Counter)
-		log.Printf("Fid: %08b %v\n", flags, in.Flags)
-		log.Printf("Cid|Fid: %064b\n", counterAndFlags)
+		log.Printf("CID: %032b %v\n", in.Counter, in.Counter)
+		log.Printf("FID: %08b %v\n", flags, in.Flags)
+		log.Printf("CID|FID: %064b\n", counterAndFlags)
 	}
 
 	data := make([]byte, 32)
@@ -197,11 +223,25 @@ func (in Input) encodeM2(k1 []byte) ([]byte, error) {
 	return cbcEncrypt(k1, iv, data)
 }
 
+func (in *Input) decodeM2(m2, k1 []byte) error {
+	if len(m2) != 32 {
+		return fmt.Errorf("invalid input length: %d", len(m2))
+	}
+	return nil
+}
+
 func (in Input) encodeM3(k2, m1, m2 []byte) ([]byte, error) {
 	var m1m2 []byte
 	m1m2 = append(m1m2, m1...)
 	m1m2 = append(m1m2, m2...)
 	return cmacGenerate(k2, m1m2)
+}
+
+func (in *Input) decodeM3(m3, k2 []byte) error {
+	if len(m3) != 16 {
+		return fmt.Errorf("invalid input length: %d", len(m3))
+	}
+	return nil
 }
 
 type keyUpdateConst [4]uint32

@@ -3,6 +3,7 @@ package mup
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"testing"
 
 	"github.com/aburdulescu/autosar/she"
@@ -60,10 +61,72 @@ func TestDecode(t *testing.T) {
 		"000000000000000000000000000001412b111e2d93f486566bcbba1d7f7a9797c94643b050fc5d4d7de14cff682203c3b9d745e5ace7d41860bc63c2b9f5bb46",
 	)
 
-	in, err := Decode(m1m2m3)
+	authKey, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f")
+
+	in, err := Decode(m1m2m3, authKey)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Log(in)
+
+	expectedIn := Input{
+		UID:     "000000000000000000000000000001",
+		AuthID:  she.MASTER_ECU_KEY,
+		ID:      she.KEY_1,
+		AuthKey: "000102030405060708090a0b0c0d0e0f",
+		NewKey:  "0f0e0d0c0b0a09080706050403020100",
+		Counter: 1,
+		Flags: ProtectionFlags{
+			KeyUsage: false,
+		},
+	}
+
+	if err := in.equals(expectedIn); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func (in Input) equals(other Input) error {
+	if in.UID != other.UID {
+		return fmt.Errorf("UID: %q != %q", in.UID, other.UID)
+	}
+	if in.AuthID != other.AuthID {
+		return fmt.Errorf("AuthID: %q != %q", in.AuthID, other.AuthID)
+	}
+	if in.ID != other.ID {
+		return fmt.Errorf("ID: %q != %q", in.ID, other.ID)
+	}
+	if in.AuthKey != other.AuthKey {
+		return fmt.Errorf("AuthKey: %q != %q", in.AuthKey, other.AuthKey)
+	}
+	if in.NewKey != other.NewKey {
+		return fmt.Errorf("NewKey: %q != %q", in.NewKey, other.NewKey)
+	}
+	if in.Counter != other.Counter {
+		return fmt.Errorf("Counter: %d != %d", in.Counter, other.Counter)
+	}
+	if err := in.Flags.equals(other.Flags); err != nil {
+		return fmt.Errorf("Flags: %w", err)
+	}
+	return nil
+}
+
+func (f ProtectionFlags) equals(other ProtectionFlags) error {
+	if f.Write != other.Write {
+		return fmt.Errorf("Write: %v != %v", f.Write, other.Write)
+	}
+	if f.Boot != other.Boot {
+		return fmt.Errorf("Boot: %v != %v", f.Boot, other.Boot)
+	}
+	if f.Debugger != other.Debugger {
+		return fmt.Errorf("Debugger: %v != %v", f.Debugger, other.Debugger)
+	}
+	if f.KeyUsage != other.KeyUsage {
+		return fmt.Errorf("KeyUsage: %v != %v", f.KeyUsage, other.KeyUsage)
+	}
+	if f.Wildcard != other.Wildcard {
+		return fmt.Errorf("Wildcard: %v != %v", f.Wildcard, other.Wildcard)
+	}
+	return nil
 }
