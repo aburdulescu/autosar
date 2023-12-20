@@ -37,20 +37,29 @@ type Input struct {
 	Flags ProtectionFlags
 }
 
-// memory update protocol encode result
-type EncodeResult struct {
-	M1 [16]byte
-	M2 [32]byte
-	M3 [16]byte
-}
-
 var withLogs = false
 
 func WithLogs() {
 	withLogs = true
 }
 
-// Encode the memory update protocol input
+func Decode(m1m2m3 []byte) (*Input, error) {
+	if len(m1m2m3) != 64 {
+		return nil, fmt.Errorf("invalid input length: %d", len(m1m2m3))
+	}
+
+	var in Input
+	if err := in.decodeM1(m1m2m3[:16]); err != nil {
+		return nil, err
+	}
+
+	return &in, nil
+}
+
+// Encode the memory update protocol data(M1, M2, M3 and M4, M5).
+//
+// m1m2m3 can be sent to the SHE module and
+// m4m5 can be checked against what the SHE module will return.
 func (in Input) Encode() (m1m2m3 [64]byte, m4m5 [48]byte, err error) {
 	if err := in.ID.IsCompatible(in.AuthID); err != nil {
 		return m1m2m3, m4m5, err
@@ -129,6 +138,34 @@ func (in Input) encodeM1() ([]byte, error) {
 	r = append(r, uint8(in.ID)<<4|uint8(in.AuthID))
 
 	return r, nil
+}
+
+func (in *Input) decodeM1(m1 []byte) error {
+	if len(m1) != 16 {
+		return fmt.Errorf("invalid input length: %d", len(m1))
+	}
+
+	id := she.KeyID((m1[15] >> 4) & 0x0f)
+	authId := she.KeyID(m1[15] & 0x0f)
+
+	if !id.IsValid() {
+		return fmt.Errorf("ID %s is not valid", id)
+	}
+	if !authId.IsValid() {
+		return fmt.Errorf("ID %s is not valid", authId)
+	}
+
+	in.UID = hex.EncodeToString(m1[:15])
+	in.AuthID = authId
+	in.ID = id
+
+	if withLogs {
+		log.Println("UID:", in.UID)
+		log.Println("AuthID:", in.AuthID)
+		log.Println("ID:", in.ID)
+	}
+
+	return nil
 }
 
 func (in Input) encodeM2(k1 []byte) ([]byte, error) {

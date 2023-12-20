@@ -8,7 +8,7 @@ import (
 	"github.com/aburdulescu/autosar/she"
 )
 
-func TestMUPEncode(t *testing.T) {
+func TestEncode(t *testing.T) {
 	WithLogs()
 
 	in := Input{
@@ -53,4 +53,17 @@ func TestMUPEncode(t *testing.T) {
 		t.Fatal("fail")
 	}
 
+}
+
+func TestDecode(t *testing.T) {
+	m1m2m3, _ := hex.DecodeString(
+		"000000000000000000000000000001412b111e2d93f486566bcbba1d7f7a9797c94643b050fc5d4d7de14cff682203c3b9d745e5ace7d41860bc63c2b9f5bb46",
+	)
+
+	in, err := Decode(m1m2m3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log(in)
 }
