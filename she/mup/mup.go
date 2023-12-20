@@ -215,8 +215,7 @@ func (in Input) encodeM2(k1 []byte) ([]byte, error) {
 
 	data := make([]byte, 32)
 
-	binary.BigEndian.PutUint64(data[0:8], counterAndFlags)
-
+	copy(data[0:8], counterAndFlags[:])
 	copy(data[16:], newKey)
 
 	return cbcEncrypt(k1, m2IV[:], data)
@@ -234,9 +233,7 @@ func (in *Input) decodeM2(m2, k1 []byte) error {
 		return err
 	}
 
-	counterAndFlags := binary.BigEndian.Uint64(data[0:8])
-
-	counter, flags := decodeCounterAndFlags(counterAndFlags)
+	counter, flags := decodeCounterAndFlags(data[0:5])
 
 	in.Flags.decode(flags)
 
@@ -332,26 +329,27 @@ func cmacVerify(key, msg, mac []byte) error {
 	return nil
 }
 
-func encodeCounterAndFlags(counter uint32, flags uint8) uint64 {
-	var v uint64
+func encodeCounterAndFlags(counter uint32, flags uint8) (result [5]byte) {
+	// TODO: panic if counter > 28 bits
 
-	// add counter(28bits), i.e. bits 63-36
-	v = uint64(counter << 4)
+	// set counter to first 28 bits
+	result[0] = byte(counter >> 24)
+	result[1] = byte(counter >> 16)
+	result[2] = byte(counter >> 8)
+	result[3] = byte(counter << 4) // TODO: wrong
 
-	// add first 4 flags, i.e. bits 35-32
-	v |= uint64((flags >> 1) & 0x0f)
+	// TODO: panic if counter > 5 bits
 
-	// shift first 32 bits
-	v <<= 32
+	// set flags to next 5 bits
+	result[3] |= (flags >> 1) & 0x0f // bits 4,3,3,1
+	result[4] |= (flags & 0x01) << 7 // bit 0
 
-	// add last flag, i.e. bit 31
-	v |= uint64(flags&0x01) << 31
-
-	return v
+	return result
 }
 
-func decodeCounterAndFlags(v uint64) (counter uint32, flags uint8) {
-	return
+func decodeCounterAndFlags(v []byte) (counter uint32, flags uint8) {
+	_ = uint32(v[3]) | uint32(v[2])<<8 | uint32(v[1])<<16 | uint32(v[0])<<24
+	return counter, flags
 }
 
 type ProtectionFlags struct {
