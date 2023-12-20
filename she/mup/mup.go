@@ -332,11 +332,6 @@ func cmacVerify(key, msg, mac []byte) error {
 	return nil
 }
 
-func decodeCounterAndFlags(v []byte) (counter uint32, flags uint8) {
-	_ = uint32(v[3]) | uint32(v[2])<<8 | uint32(v[1])<<16 | uint32(v[0])<<24
-	return counter, flags
-}
-
 type ProtectionFlags struct {
 	// Enable write-protection
 	Write bool
@@ -416,4 +411,11 @@ func encodeCounterAndFlags(counter uint32, flags uint8) (b [5]byte, err error) {
 	b[4] = flags << 7
 
 	return b, nil
+}
+
+func decodeCounterAndFlags(b []byte) (counter uint32, flags uint8) {
+	counter = uint32(b[3]) | uint32(b[2])<<8 | uint32(b[1])<<16 | uint32(b[0])<<24
+	counter >>= 4
+	flags = (b[3] & 0xf << 1) | (b[4] >> 7)
+	return counter, flags
 }

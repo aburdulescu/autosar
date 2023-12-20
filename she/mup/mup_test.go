@@ -89,7 +89,7 @@ func TestDecode(t *testing.T) {
 	}
 }
 
-func TestEncodeCounterAndFlags(t *testing.T) {
+func TestCounterAndFlags(t *testing.T) {
 	t.Run("CounterOverMax", func(t *testing.T) {
 		_, err := encodeCounterAndFlags(counterMax+1, 0)
 		if err == nil {
@@ -97,32 +97,53 @@ func TestEncodeCounterAndFlags(t *testing.T) {
 		}
 	})
 
-	t.Run("All1", func(t *testing.T) {
-		b, err := encodeCounterAndFlags(0x0fffffff, 0x1f)
-		if err != nil {
-			t.Fatal(err)
+	t.Run("Ok", func(t *testing.T) {
+		tests := []struct {
+			name    string
+			counter uint32
+			flags   uint8
+			b       []byte
+		}{
+			{
+				name:    "All1",
+				counter: 0x0fffffff,
+				flags:   0x1f,
+				b:       []byte{0xff, 0xff, 0xff, 0xff, 0x80},
+			},
+			{
+				name:    "All0",
+				counter: 0,
+				flags:   0,
+				b:       []byte{0, 0, 0, 0, 0},
+			},
 		}
-		expected := []byte{0xff, 0xff, 0xff, 0xff, 0x80}
-		if !bytes.Equal(b[:], expected) {
-			t.Log("want:", hex.EncodeToString(expected))
-			t.Log("have:", hex.EncodeToString(b[:]))
-			t.Fatal("fail")
-		}
-	})
 
-	t.Run("All0", func(t *testing.T) {
-		b, err := encodeCounterAndFlags(0, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
-		expected := []byte{0, 0, 0, 0, 0}
-		if !bytes.Equal(b[:], expected) {
-			t.Log("want:", hex.EncodeToString(expected))
-			t.Log("have:", hex.EncodeToString(b[:]))
-			t.Fatal("fail")
-		}
-	})
+		for _, test := range tests {
 
+			t.Run(test.name, func(t *testing.T) {
+
+				b, err := encodeCounterAndFlags(test.counter, test.flags)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !bytes.Equal(b[:], test.b) {
+					t.Log("want:", hex.EncodeToString(test.b))
+					t.Log("have:", hex.EncodeToString(b[:]))
+					t.Fatal("fail")
+				}
+
+				decodedCounter, decodedFlags := decodeCounterAndFlags(b[:])
+				if decodedCounter != test.counter {
+					t.Fatalf("want 0x%08x, have 0x%08x", test.counter, decodedCounter)
+				}
+				if decodedFlags != test.flags {
+					t.Fatalf("want 0x%08b, have 0x%08b", test.flags, decodedFlags)
+				}
+			})
+
+		}
+
+	})
 }
 
 func (in Input) equals(other Input) error {
