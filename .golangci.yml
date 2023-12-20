@@ -25,7 +25,6 @@ linters:
     - gochecknoinits
     - mirror
     - misspell
-    - musttag
     - predeclared
     - reassign
     - thelper
@@ -36,7 +35,6 @@ linters:
     - funlen
     - nestif
     - prealloc
-    # - stylecheck
 
 linters-settings:
   funlen:
