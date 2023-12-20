@@ -58,7 +58,9 @@ func TestEncode(t *testing.T) {
 
 func TestDecode(t *testing.T) {
 	m1m2m3, _ := hex.DecodeString(
-		"000000000000000000000000000001412b111e2d93f486566bcbba1d7f7a9797c94643b050fc5d4d7de14cff682203c3b9d745e5ace7d41860bc63c2b9f5bb46",
+		"00000000000000000000000000000141" +
+			"2b111e2d93f486566bcbba1d7f7a9797c94643b050fc5d4d7de14cff682203c3" +
+			"b9d745e5ace7d41860bc63c2b9f5bb46",
 	)
 
 	authKey, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f")
@@ -85,6 +87,42 @@ func TestDecode(t *testing.T) {
 	if err := in.equals(expectedIn); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestEncodeCounterAndFlags(t *testing.T) {
+	t.Run("CounterOverMax", func(t *testing.T) {
+		_, err := encodeCounterAndFlags(counterMax+1, 0)
+		if err == nil {
+			t.Fatalf("expected error")
+		}
+	})
+
+	t.Run("All1", func(t *testing.T) {
+		b, err := encodeCounterAndFlags(0x0fffffff, 0x1f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := []byte{0xff, 0xff, 0xff, 0xff, 0x80}
+		if !bytes.Equal(b[:], expected) {
+			t.Log("want:", hex.EncodeToString(expected))
+			t.Log("have:", hex.EncodeToString(b[:]))
+			t.Fatal("fail")
+		}
+	})
+
+	t.Run("All0", func(t *testing.T) {
+		b, err := encodeCounterAndFlags(0, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := []byte{0, 0, 0, 0, 0}
+		if !bytes.Equal(b[:], expected) {
+			t.Log("want:", hex.EncodeToString(expected))
+			t.Log("have:", hex.EncodeToString(b[:]))
+			t.Fatal("fail")
+		}
+	})
+
 }
 
 func (in Input) equals(other Input) error {

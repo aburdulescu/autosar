@@ -205,12 +205,15 @@ func (in Input) encodeM2(k1 []byte) ([]byte, error) {
 	}
 
 	flags := in.Flags.encode()
-	counterAndFlags := encodeCounterAndFlags(in.Counter, flags)
 
 	if withLogs {
-		log.Printf("CID: %032b %v\n", in.Counter, in.Counter)
-		log.Printf("FID: %08b %v\n", flags, in.Flags)
-		log.Printf("CID|FID: %064b\n", counterAndFlags)
+		log.Printf("CID: 0b%032b %v\n", in.Counter, in.Counter)
+		log.Printf("FID: 0b%08b %v\n", flags, in.Flags)
+	}
+
+	counterAndFlags, err := encodeCounterAndFlags(in.Counter, flags)
+	if err != nil {
+		return nil, err
 	}
 
 	data := make([]byte, 32)
@@ -329,24 +332,6 @@ func cmacVerify(key, msg, mac []byte) error {
 	return nil
 }
 
-func encodeCounterAndFlags(counter uint32, flags uint8) (result [5]byte) {
-	// TODO: panic if counter > 28 bits
-
-	// set counter to first 28 bits
-	result[0] = byte(counter >> 24)
-	result[1] = byte(counter >> 16)
-	result[2] = byte(counter >> 8)
-	result[3] = byte(counter << 4) // TODO: wrong
-
-	// TODO: panic if counter > 5 bits
-
-	// set flags to next 5 bits
-	result[3] |= (flags >> 1) & 0x0f // bits 4,3,3,1
-	result[4] |= (flags & 0x01) << 7 // bit 0
-
-	return result
-}
-
 func decodeCounterAndFlags(v []byte) (counter uint32, flags uint8) {
 	_ = uint32(v[3]) | uint32(v[2])<<8 | uint32(v[1])<<16 | uint32(v[0])<<24
 	return counter, flags
@@ -377,43 +362,58 @@ func (f ProtectionFlags) String() string {
 }
 
 func (f *ProtectionFlags) decode(v uint8) {
-	f.Write = getBitVal(v, 4) == 1
-	f.Boot = getBitVal(v, 3) == 1
-	f.Debugger = getBitVal(v, 2) == 1
-	f.KeyUsage = getBitVal(v, 1) == 1
-	f.Wildcard = getBitVal(v, 0) == 1
+	f.Write = getBit(v, 4) == 1
+	f.Boot = getBit(v, 3) == 1
+	f.Debugger = getBit(v, 2) == 1
+	f.KeyUsage = getBit(v, 1) == 1
+	f.Wildcard = getBit(v, 0) == 1
 }
 
 func (f ProtectionFlags) encode() uint8 {
 	var v uint8
 	if f.Write {
-		v |= putBitVal(1, 4)
+		v |= 1 << 4
 	}
 	if f.Boot {
-		v |= putBitVal(1, 3)
+		v |= 1 << 3
 	}
 	if f.Debugger {
-		v |= putBitVal(1, 2)
+		v |= 1 << 2
 	}
 	if f.KeyUsage {
-		v |= putBitVal(1, 1)
+		v |= 1 << 1
 	}
 	if f.Wildcard {
-		v |= putBitVal(1, 0)
+		v |= 1
 	}
 	return v
 }
 
 // get bit value of bit number 'i' from 'v'
-func getBitVal(v uint8, i int) uint8 {
+func getBit(v uint8, i int) uint8 {
 	mask := uint8(1) << i
 	byteVal := (v & mask) >> i
 	bitVal := byteVal & 0x01
 	return bitVal
 }
 
-// put bit value 'v' to bit number 'i'
-func putBitVal(v uint8, i int) uint8 {
-	bitVal := v & 0x01
-	return bitVal << i
+const counterMax uint32 = 0x0fffffff
+
+func encodeCounterAndFlags(counter uint32, flags uint8) (b [5]byte, err error) {
+	if counter > counterMax {
+		return b, fmt.Errorf("counter is too big, max value is 0x%08x(%d)", counterMax, counterMax)
+	}
+
+	// get rid of the 4 extra bits
+	counter <<= 4
+
+	b[0] = byte(counter >> 24)
+	b[1] = byte(counter >> 16)
+	b[2] = byte(counter >> 8)
+	b[3] = byte(counter)
+
+	b[3] |= (flags >> 1) & 0x0f
+	b[4] = flags << 7
+
+	return b, nil
 }
