@@ -64,8 +64,6 @@ func cmdExample(args ...string) error {
 func cmdEncode(args ...string) error {
 	fset := flag.NewFlagSet("encode", flag.ContinueOnError)
 
-	m4m5Also := fset.Bool("m4m5", false, "Print M4 and M5")
-
 	if err := fset.Parse(args); err != nil {
 		return err
 	}
@@ -85,16 +83,12 @@ func cmdEncode(args ...string) error {
 		return err
 	}
 
-	m1m2m3, m4m5, err := input.Encode()
+	result, err := input.Encode()
 	if err != nil {
 		return err
 	}
 
-	fmt.Print(hex.EncodeToString(m1m2m3[:]))
-	if *m4m5Also {
-		fmt.Print(hex.EncodeToString(m4m5[:]))
-	}
-	fmt.Println()
+	fmt.Println(hex.EncodeToString(result))
 
 	return nil
 }

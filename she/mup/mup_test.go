@@ -24,14 +24,14 @@ func TestEncode(t *testing.T) {
 		},
 	}
 
-	m1m2m3, _, err := in.Encode()
+	result, err := in.Encode()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	m1 := m1m2m3[:16]
-	m2 := m1m2m3[16:48]
-	m3 := m1m2m3[48:]
+	m1 := result[:16]
+	m2 := result[16:48]
+	m3 := result[48:64]
 
 	expectedM1, _ := hex.DecodeString("00000000000000000000000000000141")
 	if !bytes.Equal(m1, expectedM1) {

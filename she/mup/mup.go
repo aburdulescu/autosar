@@ -73,40 +73,48 @@ func Decode(m1m2m3, authKey []byte) (*Input, error) {
 	return &in, nil
 }
 
-// Encode the memory update protocol data(M1, M2, M3 and M4, M5).
-//
-// m1m2m3 can be sent to the SHE module and
-// m4m5 can be checked against what the SHE module will return.
-func (in Input) Encode() (m1m2m3 [64]byte, m4m5 [48]byte, err error) {
+// Encode the memory update protocol data(M1, M2, M3, M4, M5).
+func (in Input) Encode() ([]byte, error) {
 	if err := in.ID.IsCompatible(in.AuthID); err != nil {
-		return m1m2m3, m4m5, err
+		return nil, err
 	}
 
 	k1, k2, err := in.generateK1K2()
 	if err != nil {
-		return m1m2m3, m4m5, err
+		return nil, err
 	}
 
 	m1, err := in.encodeM1()
 	if err != nil {
-		return m1m2m3, m4m5, err
+		return nil, err
 	}
 
 	m2, err := in.encodeM2(k1)
 	if err != nil {
-		return m1m2m3, m4m5, err
+		return nil, err
 	}
 
 	m3, err := in.encodeM3(k2, m1, m2)
 	if err != nil {
-		return m1m2m3, m4m5, err
+		return nil, err
 	}
 
-	copy(m1m2m3[:16], m1)
-	copy(m1m2m3[16:48], m2)
-	copy(m1m2m3[48:], m3)
+	m4, err := in.encodeM4(k3, m1)
+	if err != nil {
+		return nil, err
+	}
 
-	return m1m2m3, m4m5, nil
+	m5, err := in.encodeM5(k4, m4)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]byte, 0, 112)
+	result = append(result, m1...)
+	result = append(result, m2...)
+	result = append(result, m3...)
+
+	return result, nil
 }
 
 func (in Input) generateK1K2() ([]byte, []byte, error) {
