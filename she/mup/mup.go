@@ -45,7 +45,7 @@ func WithLogs() {
 }
 
 func Decode(m1m2m3, authKey []byte) (*Input, error) {
-	if len(m1m2m3) != 64 {
+	if len(m1m2m3) < 64 {
 		return nil, fmt.Errorf("invalid input length: %d", len(m1m2m3))
 	}
 
@@ -58,7 +58,7 @@ func Decode(m1m2m3, authKey []byte) (*Input, error) {
 		return nil, err
 	}
 
-	if err := in.decodeM3(m1m2m3[:48], m1m2m3[48:], k2); err != nil {
+	if err := in.decodeM3(m1m2m3[:48], m1m2m3[48:64], k2); err != nil {
 		return nil, err
 	}
 
@@ -73,12 +73,12 @@ func Decode(m1m2m3, authKey []byte) (*Input, error) {
 	return &in, nil
 }
 
-func SliceEncodeResult(result [112]byte) (m1 []byte, m2 []byte, m3 []byte, m4 []byte, m5 []byte) {
-	m1 = result[:16]
-	m2 = result[16:48]
-	m3 = result[48:64]
-	m4 = result[64:96]
-	m5 = result[96:112]
+func SliceMs(m1m2m3m4m5 [112]byte) (m1 []byte, m2 []byte, m3 []byte, m4 []byte, m5 []byte) {
+	m1 = m1m2m3m4m5[:16]
+	m2 = m1m2m3m4m5[16:48]
+	m3 = m1m2m3m4m5[48:64]
+	m4 = m1m2m3m4m5[64:96]
+	m5 = m1m2m3m4m5[96:112]
 	return
 }
 

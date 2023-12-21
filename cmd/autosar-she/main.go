@@ -30,6 +30,8 @@ func mainErr(args ...string) error {
 	switch cmd {
 	case "encode":
 		return cmdEncode(args...)
+	case "decode":
+		return cmdDecode(args...)
 	case "example":
 		return cmdExample(args...)
 	default:

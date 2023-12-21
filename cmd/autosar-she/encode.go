@@ -13,6 +13,8 @@ import (
 func cmdEncode(args ...string) error {
 	fset := flag.NewFlagSet("encode", flag.ContinueOnError)
 
+	oneLine := fset.Bool("l", false, "Print everything on one line")
+
 	if err := fset.Parse(args); err != nil {
 		return err
 	}
@@ -37,13 +39,16 @@ func cmdEncode(args ...string) error {
 		return err
 	}
 
-	m1, m2, m3, m4, m5 := mup.SliceEncodeResult(result)
-
-	fmt.Println(hex.EncodeToString(m1))
-	fmt.Println(hex.EncodeToString(m2))
-	fmt.Println(hex.EncodeToString(m3))
-	fmt.Println(hex.EncodeToString(m4))
-	fmt.Println(hex.EncodeToString(m5))
+	if *oneLine {
+		fmt.Println(hex.EncodeToString(result[:]))
+	} else {
+		m1, m2, m3, m4, m5 := mup.SliceMs(result)
+		fmt.Println(hex.EncodeToString(m1))
+		fmt.Println(hex.EncodeToString(m2))
+		fmt.Println(hex.EncodeToString(m3))
+		fmt.Println(hex.EncodeToString(m4))
+		fmt.Println(hex.EncodeToString(m5))
+	}
 
 	return nil
 }

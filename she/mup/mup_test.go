@@ -29,7 +29,7 @@ func TestEncode(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	m1, m2, m3, m4, m5 := SliceEncodeResult(result)
+	m1, m2, m3, m4, m5 := SliceMs(result)
 
 	expectedM1, _ := hex.DecodeString("00000000000000000000000000000141")
 	if !bytes.Equal(m1, expectedM1) {
