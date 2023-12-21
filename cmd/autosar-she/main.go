@@ -58,11 +58,7 @@ func cmdExample(args ...string) error {
 		NewKey:  "00000000000000000000000000000000",
 	}
 
-	if err := enc.Encode(input); err != nil {
-		return err
-	}
-
-	return nil
+	return enc.Encode(input)
 }
 
 func cmdEncode(args ...string) error {
