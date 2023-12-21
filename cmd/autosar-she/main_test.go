@@ -28,5 +28,4 @@ func Test(t *testing.T) {
 	if err := mainErr("encode", "-foo"); err == nil {
 		t.Fatal("expected error")
 	}
-
 }

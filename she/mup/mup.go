@@ -53,7 +53,7 @@ func Decode(m1m2m3, authKey []byte) (*Input, error) {
 
 	in.AuthKey = hex.EncodeToString(authKey)
 
-	k1, k2, err := in.generateK1K2()
+	k1, k2, err := deriveKeys(authKey)
 	if err != nil {
 		return nil, err
 	}
@@ -73,59 +73,94 @@ func Decode(m1m2m3, authKey []byte) (*Input, error) {
 	return &in, nil
 }
 
+func SliceEncodeResult(result [112]byte) (m1 []byte, m2 []byte, m3 []byte, m4 []byte, m5 []byte) {
+	m1 = result[:16]
+	m2 = result[16:48]
+	m3 = result[48:64]
+	m4 = result[64:96]
+	m5 = result[96:112]
+	return
+}
+
 // Encode the memory update protocol data(M1, M2, M3, M4, M5).
-func (in Input) Encode() ([]byte, error) {
+func (in Input) Encode() (result [112]byte, err error) {
 	if err := in.ID.IsCompatible(in.AuthID); err != nil {
-		return nil, err
+		return result, err
 	}
 
-	k1, k2, err := in.generateK1K2()
+	authKey, err := decodeAesKey(in.AuthKey)
 	if err != nil {
-		return nil, err
+		return result, fmt.Errorf("AuthKey: %w", err)
+	}
+
+	newKey, err := decodeAesKey(in.NewKey)
+	if err != nil {
+		return result, fmt.Errorf("NewKey: %w", err)
+	}
+
+	k1, k2, err := deriveKeys(authKey)
+	if err != nil {
+		return result, err
+	}
+
+	k3, k4, err := deriveKeys(newKey)
+	if err != nil {
+		return result, err
+	}
+
+	if withLogs {
+		log.Println("K1:", hex.EncodeToString(k1))
+		log.Println("K2:", hex.EncodeToString(k2))
+		log.Println("K3:", hex.EncodeToString(k3))
+		log.Println("K4:", hex.EncodeToString(k4))
 	}
 
 	m1, err := in.encodeM1()
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 
-	m2, err := in.encodeM2(k1)
+	m2, err := in.encodeM2(newKey, k1)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 
 	m3, err := in.encodeM3(k2, m1, m2)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 
 	m4, err := in.encodeM4(k3, m1)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 
 	m5, err := in.encodeM5(k4, m4)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 
-	result := make([]byte, 0, 112)
-	result = append(result, m1...)
-	result = append(result, m2...)
-	result = append(result, m3...)
+	copy(result[0:16], m1)
+	copy(result[16:48], m2)
+	copy(result[48:64], m3)
+	copy(result[64:96], m4)
+	copy(result[96:112], m5)
 
 	return result, nil
 }
 
-func (in Input) generateK1K2() ([]byte, []byte, error) {
-	authKey, err := hex.DecodeString(in.AuthKey)
+func decodeAesKey(hexKey string) ([]byte, error) {
+	key, err := hex.DecodeString(hexKey)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	if len(authKey) != 16 {
-		return nil, nil, fmt.Errorf("AuthKey expected length is 16 bytes, have %d bytes", len(authKey))
+	if len(key) != 16 {
+		return nil, fmt.Errorf("expected length is 16 bytes, have %d bytes", len(key))
 	}
+	return key, nil
+}
 
+func deriveKeys(key []byte) ([]byte, []byte, error) {
 	encConst := sheKeyUpdateEncConstBase.encode()
 	macConst := sheKeyUpdateMacConstBase.encode()
 
@@ -134,19 +169,14 @@ func (in Input) generateK1K2() ([]byte, []byte, error) {
 		log.Println("MAC_C:", hex.EncodeToString(macConst))
 	}
 
-	k1, err := aesmp.Compress(authKey, encConst)
+	k1, err := aesmp.Compress(key, encConst)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	k2, err := aesmp.Compress(authKey, macConst)
+	k2, err := aesmp.Compress(key, macConst)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	if withLogs {
-		log.Println("K1:", hex.EncodeToString(k1))
-		log.Println("K2:", hex.EncodeToString(k2))
 	}
 
 	return k1, k2, nil
@@ -203,15 +233,7 @@ func (in *Input) decodeM1(m1 []byte) error {
 	return nil
 }
 
-func (in Input) encodeM2(k1 []byte) ([]byte, error) {
-	newKey, err := hex.DecodeString(in.NewKey)
-	if err != nil {
-		return nil, err
-	}
-	if len(newKey) != 16 {
-		return nil, fmt.Errorf("NewKey expected length is 16 bytes, have %d bytes", len(newKey))
-	}
-
+func (in Input) encodeM2(newKey, k1 []byte) ([]byte, error) {
 	flags := in.Flags.encode()
 
 	if withLogs {
@@ -272,6 +294,37 @@ func (in *Input) decodeM3(m1m2, m3, k2 []byte) error {
 		return fmt.Errorf("verification of M3 failed: %w", err)
 	}
 	return nil
+}
+
+func (in Input) encodeM4(k3, m1 []byte) ([]byte, error) {
+	counter, err := encodeCounterAndFlags(in.Counter, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	// set bit 3 to 1
+	counter[3] |= 0b00001000
+
+	data := make([]byte, 32)
+
+	copy(data[:16], m1)
+	copy(data[16:], counter[:])
+
+	ecb(k3, data[16:])
+
+	return data, nil
+}
+
+func ecb(key, in []byte) {
+	block, _ := aes.NewCipher(key)
+	for len(in) > 0 {
+		block.Encrypt(in, in)
+		in = in[16:]
+	}
+}
+
+func (in Input) encodeM5(k4, m4 []byte) ([]byte, error) {
+	return cmacGenerate(k4, m4)
 }
 
 type keyUpdateConst [4]uint32

@@ -29,31 +29,42 @@ func TestEncode(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	m1 := result[:16]
-	m2 := result[16:48]
-	m3 := result[48:64]
+	m1, m2, m3, m4, m5 := SliceEncodeResult(result)
 
 	expectedM1, _ := hex.DecodeString("00000000000000000000000000000141")
 	if !bytes.Equal(m1, expectedM1) {
 		t.Log("want", hex.EncodeToString(expectedM1))
 		t.Log("have", hex.EncodeToString(m1))
-		t.Fatal("fail")
+		t.Fatal("m1")
 	}
 
 	expectedM2, _ := hex.DecodeString("2b111e2d93f486566bcbba1d7f7a9797c94643b050fc5d4d7de14cff682203c3")
 	if !bytes.Equal(m2, expectedM2) {
 		t.Log("want", hex.EncodeToString(expectedM2))
 		t.Log("have", hex.EncodeToString(m2))
-		t.Fatal("fail")
+		t.Fatal("m2")
 	}
 
 	expectedM3, _ := hex.DecodeString("b9d745e5ace7d41860bc63c2b9f5bb46")
 	if !bytes.Equal(m3, expectedM3) {
 		t.Log("want", hex.EncodeToString(expectedM3))
 		t.Log("have", hex.EncodeToString(m3))
-		t.Fatal("fail")
+		t.Fatal("m3")
 	}
 
+	expectedM4, _ := hex.DecodeString("00000000000000000000000000000141b472e8d8727d70d57295e74849a27917")
+	if !bytes.Equal(m4, expectedM4) {
+		t.Log("want", hex.EncodeToString(expectedM4))
+		t.Log("have", hex.EncodeToString(m4))
+		t.Fatal("m4")
+	}
+
+	expectedM5, _ := hex.DecodeString("820d8d95dc11b4668878160cb2a4e23e")
+	if !bytes.Equal(m5, expectedM5) {
+		t.Log("want", hex.EncodeToString(expectedM5))
+		t.Log("have", hex.EncodeToString(m5))
+		t.Fatal("m5")
+	}
 }
 
 func TestDecode(t *testing.T) {

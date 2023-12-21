@@ -43,6 +43,7 @@ func mainErr(args ...string) error {
 
 func cmdExample(args ...string) error {
 	fset := flag.NewFlagSet("example", flag.ContinueOnError)
+
 	if err := fset.Parse(args); err != nil {
 		return err
 	}
@@ -88,7 +89,13 @@ func cmdEncode(args ...string) error {
 		return err
 	}
 
-	fmt.Println(hex.EncodeToString(result))
+	m1, m2, m3, m4, m5 := mup.SliceEncodeResult(result)
+
+	fmt.Println(hex.EncodeToString(m1))
+	fmt.Println(hex.EncodeToString(m2))
+	fmt.Println(hex.EncodeToString(m3))
+	fmt.Println(hex.EncodeToString(m4))
+	fmt.Println(hex.EncodeToString(m5))
 
 	return nil
 }
