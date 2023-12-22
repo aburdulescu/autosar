@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/debug"
 )
 
 func main() {
@@ -15,8 +16,16 @@ func main() {
 
 func mainErr(args ...string) error {
 	fset := flag.NewFlagSet("main", flag.ContinueOnError)
+
+	printVersion := fset.Bool("version", false, "Print version information")
+
 	if err := fset.Parse(args); err != nil {
 		return err
+	}
+
+	if *printVersion {
+		version()
+		return nil
 	}
 
 	if fset.NArg() < 1 {
@@ -37,4 +46,24 @@ func mainErr(args ...string) error {
 	default:
 		return fmt.Errorf("unknown command '%s'", cmd)
 	}
+}
+
+func version() {
+	bi, _ := debug.ReadBuildInfo()
+	get := func(k string) string {
+		for _, v := range bi.Settings {
+			if v.Key == k {
+				return v.Value
+			}
+		}
+		return ""
+	}
+	fmt.Println(
+		bi.GoVersion,
+		get("GOOS"),
+		get("GOARCH"),
+		get("vcs.revision"),
+		get("vcs.time"),
+		get("vcs.modified"),
+	)
 }
