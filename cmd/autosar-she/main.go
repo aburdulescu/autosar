@@ -50,7 +50,7 @@ func mainErr(args ...string) error {
 
 func version() {
 	bi, _ := debug.ReadBuildInfo()
-	get := func(k string) string {
+	g := func(k string) string {
 		for _, v := range bi.Settings {
 			if v.Key == k {
 				return v.Value
@@ -58,12 +58,8 @@ func version() {
 		}
 		return ""
 	}
-	fmt.Println(
-		bi.GoVersion,
-		get("GOOS"),
-		get("GOARCH"),
-		get("vcs.revision"),
-		get("vcs.time"),
-		get("vcs.modified"),
-	)
+	fmt.Println("go     ", bi.GoVersion)
+	fmt.Println("commit ", g("vcs.revision"))
+	fmt.Println("time   ", g("vcs.time"))
+	fmt.Println("dirty  ", g("vcs.modified"))
 }
