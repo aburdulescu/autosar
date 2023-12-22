@@ -1,4 +1,4 @@
-package aesmp
+package mp
 
 import (
 	"crypto/aes"

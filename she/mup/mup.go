@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/aburdulescu/autosar/internal/aesmp"
+	aesmp "github.com/aburdulescu/autosar/internal/crypto/aes/mp"
 	"github.com/aburdulescu/autosar/she"
 
 	"github.com/aead/cmac"
