@@ -3,6 +3,7 @@ package cmac
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/subtle"
 )
 
 const bs = 16
@@ -47,6 +48,14 @@ func Generate(key, msg []byte) ([]byte, error) {
 	c.Encrypt(mLast[:], mLast[:])
 
 	return mLast[:], nil
+}
+
+func Verify(key, msg, mac []byte) bool {
+	myMac, err := Generate(key, msg)
+	if err != nil {
+		return false
+	}
+	return subtle.ConstantTimeCompare(mac, myMac) == 1
 }
 
 func generateSubKey(c cipher.Block, k1, k2 []byte) {

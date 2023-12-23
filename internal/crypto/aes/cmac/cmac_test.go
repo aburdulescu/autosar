@@ -59,6 +59,17 @@ func TestGenerate(t *testing.T) {
 	}
 }
 
+func TestVerify(t *testing.T) {
+	for _, tv := range testVectors {
+		t.Run(strconv.Itoa(len(tv.msg)), func(t *testing.T) {
+			ok := Verify(key, tv.msg, tv.mac)
+			if !ok {
+				t.Error("nok")
+			}
+		})
+	}
+}
+
 func TestSubKey(t *testing.T) {
 	expectedK1 := h2b("fbeed618357133667c85e08f7236a8de")
 	expectedK2 := h2b("f7ddac306ae266ccf90bc11ee46d513b")

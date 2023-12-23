@@ -11,8 +11,6 @@ import (
 	"github.com/aburdulescu/autosar/internal/crypto/aes/cmac"
 	"github.com/aburdulescu/autosar/internal/crypto/aes/mp"
 	"github.com/aburdulescu/autosar/she"
-
-	cmac3p "github.com/aead/cmac"
 )
 
 type Input struct {
@@ -291,8 +289,8 @@ func (in *Input) decodeM3(m1m2, m3, k2 []byte) error {
 	if len(m3) != 16 {
 		return fmt.Errorf("invalid length for m3: %d", len(m3))
 	}
-	if err := cmacVerify(k2, m1m2, m3); err != nil {
-		return fmt.Errorf("verification of M3 failed: %w", err)
+	if !cmac.Verify(k2, m1m2, m3) {
+		return fmt.Errorf("verification of M3 failed")
 	}
 	return nil
 }
@@ -369,17 +367,6 @@ func cbc(key, iv, in []byte, direction bool) ([]byte, error) {
 	}
 	mode.CryptBlocks(out, in)
 	return out, nil
-}
-
-func cmacVerify(key, msg, mac []byte) error {
-	c, err := aes.NewCipher(key)
-	if err != nil {
-		return err
-	}
-	if !cmac3p.Verify(mac, msg, c, c.BlockSize()) {
-		return fmt.Errorf("cmac: verify failed")
-	}
-	return nil
 }
 
 type ProtectionFlags struct {
