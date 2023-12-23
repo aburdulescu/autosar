@@ -8,10 +8,11 @@ import (
 	"fmt"
 	"log"
 
-	aesmp "github.com/aburdulescu/autosar/internal/crypto/aes/mp"
+	"github.com/aburdulescu/autosar/internal/crypto/aes/cmac"
+	"github.com/aburdulescu/autosar/internal/crypto/aes/mp"
 	"github.com/aburdulescu/autosar/she"
 
-	"github.com/aead/cmac"
+	cmac3p "github.com/aead/cmac"
 )
 
 type Input struct {
@@ -169,12 +170,12 @@ func deriveKeys(key []byte) ([]byte, []byte, error) {
 		log.Println("MAC_C:", hex.EncodeToString(macConst))
 	}
 
-	k1, err := aesmp.Compress(key, encConst)
+	k1, err := mp.Compress(key, encConst)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	k2, err := aesmp.Compress(key, macConst)
+	k2, err := mp.Compress(key, macConst)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -280,7 +281,7 @@ func (in Input) encodeM3(k2, m1, m2 []byte) ([]byte, error) {
 	var m1m2 []byte
 	m1m2 = append(m1m2, m1...)
 	m1m2 = append(m1m2, m2...)
-	return cmacGenerate(k2, m1m2)
+	return cmac.Generate(k2, m1m2)
 }
 
 func (in *Input) decodeM3(m1m2, m3, k2 []byte) error {
@@ -324,7 +325,7 @@ func ecb(key, in []byte) {
 }
 
 func (in Input) encodeM5(k4, m4 []byte) ([]byte, error) {
-	return cmacGenerate(k4, m4)
+	return cmac.Generate(k4, m4)
 }
 
 type keyUpdateConst [4]uint32
@@ -370,24 +371,12 @@ func cbc(key, iv, in []byte, direction bool) ([]byte, error) {
 	return out, nil
 }
 
-func cmacGenerate(key, msg []byte) ([]byte, error) {
-	c, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	result, err := cmac.Sum(msg, c, c.BlockSize())
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
 func cmacVerify(key, msg, mac []byte) error {
 	c, err := aes.NewCipher(key)
 	if err != nil {
 		return err
 	}
-	if !cmac.Verify(mac, msg, c, c.BlockSize()) {
+	if !cmac3p.Verify(mac, msg, c, c.BlockSize()) {
 		return fmt.Errorf("cmac: verify failed")
 	}
 	return nil
