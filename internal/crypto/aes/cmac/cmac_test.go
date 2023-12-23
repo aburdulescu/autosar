@@ -95,3 +95,66 @@ func assertBytes(t *testing.T, have, want []byte) {
 		t.Fail()
 	}
 }
+
+func assertBytesNE(t *testing.T, have, want []byte) {
+	t.Helper()
+	if bytes.Equal(have, want) {
+		t.Log("want:", hex.EncodeToString(want))
+		t.Log("have:", hex.EncodeToString(have))
+		t.Fail()
+	}
+}
+
+func TestWycheproof(t *testing.T) {
+	for _, tv := range wycheproofVectors {
+		t.Run(strconv.Itoa(tv.TcId), func(t *testing.T) {
+			key := h2b(tv.Key)
+			msg := h2b(tv.Msg)
+			tag := h2b(tv.Tag)
+
+			t.Run("Generate", func(t *testing.T) {
+				mac, err := Generate(key, msg)
+				switch tv.Result {
+				case "valid":
+					if err != nil {
+						t.Error(err)
+					}
+					assertBytes(t, mac, tag)
+				case "invalid":
+					switch tv.Flag {
+					case "InvalidKeySize":
+						if err == nil {
+							t.Error("expected error")
+						}
+					case "ModifiedTag":
+						if err != nil {
+							t.Error(err)
+						}
+						assertBytesNE(t, mac, tag)
+					default:
+						t.Fatal("unexpected flag:", tv.Flag)
+					}
+				default:
+					t.Fatal("unexpected result:", tv.Result)
+				}
+			})
+
+			t.Run("Verify", func(t *testing.T) {
+				ok := Verify(key, msg, tag)
+				switch tv.Result {
+				case "valid":
+					if !ok {
+						t.Error("verification failed, expected to pass")
+					}
+				case "invalid":
+					if ok {
+						t.Error("verification passed, expected to fail")
+					}
+				default:
+					t.Fatal("unexpected result:", tv.Result)
+				}
+			})
+
+		})
+	}
+}

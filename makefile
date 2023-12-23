@@ -15,7 +15,7 @@ generate:
 
 lint:
 	which golangci-lint || go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	golangci-lint run
+	golangci-lint run --skip-dirs scripts
 
 coverage: test
 	go tool cover -html=cov.out -o=cov.html
