@@ -49,7 +49,7 @@ func download() error {
 	}
 	defer r.Body.Close()
 
-	os.MkdirAll(filepath.Dir(jsonFile), 0700)
+	_ = os.MkdirAll(filepath.Dir(jsonFile), 0700)
 
 	f, err := os.Create(jsonFile)
 	if err != nil {
