@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 )
@@ -16,6 +17,10 @@ func h2b(h string) []byte {
 		panic(err)
 	}
 	return b
+}
+
+func h2s(h []byte) string {
+	return hex.EncodeToString(h)
 }
 
 var key = h2b("2b7e151628aed2a6abf7158809cf4f3c")
@@ -92,8 +97,8 @@ func TestSubKey(t *testing.T) {
 func assertBytes(t *testing.T, have, want []byte) {
 	t.Helper()
 	if !bytes.Equal(have, want) {
-		t.Log("want:", hex.EncodeToString(want))
-		t.Log("have:", hex.EncodeToString(have))
+		t.Log("want:", h2s(want))
+		t.Log("have:", h2s(have))
 		t.Fail()
 	}
 }
@@ -101,37 +106,35 @@ func assertBytes(t *testing.T, have, want []byte) {
 func assertBytesNE(t *testing.T, have, want []byte) {
 	t.Helper()
 	if bytes.Equal(have, want) {
-		t.Log("want:", hex.EncodeToString(want))
-		t.Log("have:", hex.EncodeToString(have))
+		t.Log("want:", h2s(want))
+		t.Log("have:", h2s(have))
 		t.Fail()
 	}
 }
 
 //go:generate go run gen_wycheproof.go
-
-type wycheproofData struct {
-	TestGroups []wycheproofTestGroup `json:"testGroups"`
-}
-
-type wycheproofTestGroup struct {
-	KeySize int              `json:"keySize"`
-	TagSize int              `json:"tagSize"`
-	Tests   []wycheproofTest `json:"tests"`
-}
-
-type wycheproofTest struct {
-	TcId   int      `json:"tcId"`
-	Flags  []string `json:"flags"`
-	Key    string   `json:"key"`
-	Msg    string   `json:"msg"`
-	Tag    string   `json:"tag"`
-	Result string   `json:"result"`
-}
-
 func TestWycheproof(t *testing.T) {
-	var data wycheproofData
+	type Test struct {
+		TcId   int      `json:"tcId"`
+		Flags  []string `json:"flags"`
+		Key    string   `json:"key"`
+		Msg    string   `json:"msg"`
+		Tag    string   `json:"tag"`
+		Result string   `json:"result"`
+	}
+	type TestGroup struct {
+		KeySize int    `json:"keySize"`
+		TagSize int    `json:"tagSize"`
+		Tests   []Test `json:"tests"`
+	}
+	type Data struct {
+		TestGroups []TestGroup `json:"testGroups"`
+	}
+
+	var data Data
 	{
-		b, err := os.ReadFile("testdata/aes_cmac_test.json")
+		file := filepath.Clean("testdata/wycheproof/aes_cmac_test.json")
+		b, err := os.ReadFile(file)
 		if err != nil {
 			t.Fatal(err)
 		}

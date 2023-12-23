@@ -1,5 +1,6 @@
 //go:build ignore
 
+// Download test vectors for AES-CMAC from wycheproof project
 package main
 
 import (
@@ -16,12 +17,14 @@ func main() {
 	}
 }
 
-const (
-	jsonFile = "testdata/aes_cmac_test.json"
+var (
+	jsonFile = "testdata/wycheproof/aes_cmac_test.json"
 	url      = "https://raw.githubusercontent.com/google/wycheproof/master/testvectors_v1/aes_cmac_test.json"
 )
 
 func download() error {
+	jsonFile = filepath.Clean(jsonFile)
+
 	fmt.Println("download:", url)
 
 	r, err := http.Get(url)
