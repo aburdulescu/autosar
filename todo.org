@@ -1,5 +1,5 @@
 * todo [1/4]
-** TODO more tests for AES-CMAC: cavp, wycheproof
-** TODO more tests for AES-MP
+** TODO more tests for AES-CMAC: cavp, wycheproof, fuztests
+** TODO more tests for AES-MP: vectors, fuztests
 ** TODO use string for AuthID and ID instead of int to be more user friendly?
 ** DONE implement M4 and M5
