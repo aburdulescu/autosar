@@ -5,13 +5,13 @@ import (
 	"errors"
 )
 
-const blockSize = 16
+const bs = 16
 
 func Compress(srcKey, constant []byte) ([]byte, error) {
-	if len(srcKey)%blockSize != 0 {
+	if len(srcKey)%bs != 0 {
 		return nil, errors.New("srckey not aligned to AES block")
 	}
-	if len(constant)%blockSize != 0 {
+	if len(constant)%bs != 0 {
 		return nil, errors.New("constant not aligned to AES block")
 	}
 	paddedConstant := constant
