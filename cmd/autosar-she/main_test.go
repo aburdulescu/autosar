@@ -20,4 +20,10 @@ func TestMainErr(t *testing.T) {
 	if err := mainErr("encode"); err == nil {
 		t.Fatal("expected error")
 	}
+	if err := mainErr("decode"); err == nil {
+		t.Fatal("expected error")
+	}
+	if err := mainErr("-version"); err != nil {
+		t.Fatal(err)
+	}
 }
