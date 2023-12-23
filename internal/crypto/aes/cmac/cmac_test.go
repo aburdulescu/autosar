@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"crypto/aes"
 	"encoding/hex"
+	"encoding/json"
+	"os"
 	"strconv"
 	"testing"
 )
@@ -105,56 +107,96 @@ func assertBytesNE(t *testing.T, have, want []byte) {
 	}
 }
 
-func TestWycheproof(t *testing.T) {
-	for _, tv := range wycheproofVectors {
-		t.Run(strconv.Itoa(tv.TcId), func(t *testing.T) {
-			key := h2b(tv.Key)
-			msg := h2b(tv.Msg)
-			tag := h2b(tv.Tag)
+//go:generate go run gen_wycheproof.go
 
-			t.Run("Generate", func(t *testing.T) {
-				mac, err := Generate(key, msg)
-				switch tv.Result {
-				case "valid":
-					if err != nil {
-						t.Error(err)
-					}
-					assertBytes(t, mac, tag)
-				case "invalid":
-					switch tv.Flag {
-					case "InvalidKeySize":
-						if err == nil {
-							t.Error("expected error")
-						}
-					case "ModifiedTag":
+type wycheproofData struct {
+	TestGroups []wycheproofTestGroup `json:"testGroups"`
+}
+
+type wycheproofTestGroup struct {
+	KeySize int              `json:"keySize"`
+	TagSize int              `json:"tagSize"`
+	Tests   []wycheproofTest `json:"tests"`
+}
+
+type wycheproofTest struct {
+	TcId   int      `json:"tcId"`
+	Flags  []string `json:"flags"`
+	Key    string   `json:"key"`
+	Msg    string   `json:"msg"`
+	Tag    string   `json:"tag"`
+	Result string   `json:"result"`
+}
+
+func TestWycheproof(t *testing.T) {
+	var data wycheproofData
+	{
+		b, err := os.ReadFile("testdata/aes_cmac_test.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(b, &data); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for _, tg := range data.TestGroups {
+		for _, tv := range tg.Tests {
+
+			t.Run(strconv.Itoa(tv.TcId), func(t *testing.T) {
+				if len(tv.Flags) != 1 {
+					t.Fatal("unexpected len of Flags:", len(tv.Flags))
+				}
+
+				key := h2b(tv.Key)
+				msg := h2b(tv.Msg)
+				tag := h2b(tv.Tag)
+				flag := tv.Flags[0]
+
+				t.Run("Generate", func(t *testing.T) {
+					mac, err := Generate(key, msg)
+					switch tv.Result {
+					case "valid":
 						if err != nil {
 							t.Error(err)
 						}
-						assertBytesNE(t, mac, tag)
+						assertBytes(t, mac, tag)
+					case "invalid":
+						switch flag {
+						case "InvalidKeySize":
+							if err == nil {
+								t.Error("expected error")
+							}
+						case "ModifiedTag":
+							if err != nil {
+								t.Error(err)
+							}
+							assertBytesNE(t, mac, tag)
+						default:
+							t.Fatal("unexpected flag:", flag)
+						}
 					default:
-						t.Fatal("unexpected flag:", tv.Flag)
+						t.Fatal("unexpected result:", tv.Result)
 					}
-				default:
-					t.Fatal("unexpected result:", tv.Result)
-				}
-			})
+				})
 
-			t.Run("Verify", func(t *testing.T) {
-				ok := Verify(key, msg, tag)
-				switch tv.Result {
-				case "valid":
-					if !ok {
-						t.Error("verification failed, expected to pass")
+				t.Run("Verify", func(t *testing.T) {
+					ok := Verify(key, msg, tag)
+					switch tv.Result {
+					case "valid":
+						if !ok {
+							t.Error("verification failed, expected to pass")
+						}
+					case "invalid":
+						if ok {
+							t.Error("verification passed, expected to fail")
+						}
+					default:
+						t.Fatal("unexpected result:", tv.Result)
 					}
-				case "invalid":
-					if ok {
-						t.Error("verification passed, expected to fail")
-					}
-				default:
-					t.Fatal("unexpected result:", tv.Result)
-				}
-			})
+				})
 
-		})
+			})
+		}
 	}
 }
